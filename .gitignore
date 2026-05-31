@@ -1,0 +1,8 @@
+venv_nlp/
+__pycache__/
+*.pyc
+*.csv
+*.tsv
+*.pkl
+.env
+.ipynb_checkpoints/
