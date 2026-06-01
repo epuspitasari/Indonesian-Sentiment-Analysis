@@ -1,7 +1,7 @@
 import os
 import sys
 import pandas as pd
-import joblib  # Digunakan langsung sebagai fallback amannya ekspor artefak
+import joblib  
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from imblearn.over_sampling import SMOTE
@@ -10,35 +10,20 @@ from imblearn.over_sampling import SMOTE
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from utils import total_clean_pipeline
 
-
 def normalize_phrases(text: str) -> str:
     """Normalisasi frasa penting agar model lebih mudah belajar pola sentimen & spam."""
     replacements = {
-        # Sentimen umum
-        "lebih baik": "lebih_baik",
-        "lancar banget": "lancar_banget",
-        "lama banget": "lama_banget",
-        "capek nunggu": "capek_nunggu",
-        "bikin capek": "bikin_capek",
-        "lebih cepat": "lebih_cepat",
-        "tidak sesuai": "tidak_sesuai",
-        "gak sesuai": "tidak_sesuai",
-        "tidak bagus": "tidak_bagus",
-        "gak bagus": "tidak_bagus",
-
-        # Pola DM berpotensi spam/judol (untuk dipelajari model)
-        "dm admin": "dm_admin",
-        "dm slot": "dm_slot",
-        "dm deposit": "dm_deposit",
-        "dm link": "dm_link",
-        "dm daftar": "dm_daftar",
-        "dm untuk": "dm_untuk",
-        "dm wa": "dm_wa"
+        "lebih baik": "lebih_baik", "lancar banget": "lancar_banget",
+        "lama banget": "lama_banget", "capek nunggu": "capek_nunggu",
+        "bikin capek": "bikin_capek", "lebih cepat": "lebih_cepat",
+        "tidak sesuai": "tidak_sesuai", "gak sesuai": "tidak_sesuai",
+        "tidak bagus": "tidak_bagus", "gak bagus": "tidak_bagus",
+        "dm admin": "dm_admin", "dm slot": "dm_slot", "dm deposit": "dm_deposit",
+        "dm link": "dm_link", "dm daftar": "dm_daftar", "dm untuk": "dm_untuk", "dm wa": "dm_wa"
     }
     for k, v in replacements.items():
         text = text.replace(k, v)
     return text
-
 
 def main():
     # ============================
@@ -76,30 +61,27 @@ def main():
         return
 
     # ============================
-    # 3. INTEGRASI DATA FEEDBACK & ANTISIPASI DUPLIKASI
+    # 3. INTEGRASI DATA FEEDBACK (Sinkron dengan Log app_nlp.py)
     # ============================
     if os.path.exists(csv_feedback_path):
         print("\n[INFO]: File koreksi user ditemukan. Menggabungkan data...")
         try:
-            # Menggunakan sep=";" agar sinkron dengan output simpanan app_nlp.py
+            # Dibaca dengan sep=";" sesuai konfigurasi penyimpanan app_nlp.py
             df_fb = pd.read_csv(csv_feedback_path, sep=";", encoding="utf-8")
             df_fb.columns = df_fb.columns.str.strip()
             
-            # Ubah nama kolom teks_asli -> review_text & prediksi_sistem -> sentiment agar seragam
-            df_fb = df_fb.rename(columns={"teks_asli": "review_text", "prediksi_sistem": "sentiment"})
-            
-            # Ambil kolom yang dibutuhkan saja
-            df_fb = df_fb[["review_text", "sentiment"]]
+            # SINKRONISASI: Kolom feedback di app_nlp.py sudah berupa 'review_text' & 'sentiment'
+            df_fb = df_fb[["review_text", "sentiment"]].copy()
             
             # Gabungkan ke dataframe utama
             df = pd.concat([df, df_fb], ignore_index=True)
             
-            # Hapus duplikasi ulasan berdasarkan teks asli, simpan koreksi terbaru dari manusia (keep="last")
+            # Hapus duplikasi, simpan koreksi terbaru dari manusia (keep="last")
             sebelum_drop = len(df)
             df = df.drop_duplicates(subset=["review_text"], keep="last")
             sesudah_drop = len(df)
             
-            print(f"Sukses mengasimilasi data koreksi baru. Total baris digabung: {sebelum_drop} -> Baris unik: {sesudah_drop}")
+            print(f"Sukses mengasimilasi data koreksi baru. Total baris: {sebelum_drop} -> Baris unik: {sesudah_drop}")
         except Exception as e:
             print(f"[PERINGATAN]: Gagal memproses file koreksi: {e}. Melanjutkan dengan dataset utama.")
 
@@ -108,10 +90,10 @@ def main():
     df["review_text"] = df["review_text"].astype(str).str.strip()
     df = df[df["review_text"] != ""]
     
-    # Penyelarasan format string teks label sentimen secara seragam
+    # Penyelarasan format string label sentimen
     df["sentiment"] = df["sentiment"].astype(str).str.strip().str.lower()
     
-    # Sinkronisasi translasi label bahasa Indonesia ke bahasa Inggris agar sesuai korpus utama model
+    # Sinkronisasi translasi label ke format model utama
     mapping_label = {
         "positif": "positive",
         "negatif": "negative",
@@ -120,8 +102,6 @@ def main():
     df["sentiment"] = df["sentiment"].replace(mapping_label)
 
     print(f"Total baris siap proses: {len(df)}")
-    print("Distribusi label saat ini:")
-    print(df["sentiment"].value_counts(), "\n")
 
     # ============================
     # 4. CLEANING + NORMALISASI FRASA
@@ -180,13 +160,11 @@ def main():
     # 8. EKSPORE ARTIFAK SINKRON
     # ============================
     try:
-        # Menggunakan joblib.dump langsung untuk menjamin kompatibilitas bypass jalur pemanggilan pkl
         joblib.dump(vectorizer, os.path.join(model_dir, "tfidf_vectorizer.pkl"))
         joblib.dump(model, os.path.join(model_dir, "sentiment_model.pkl"))
         print("\n=== [SELESAI] Artefak Model Baru Berhasil Diperbarui secara Sinkron! ===")
     except Exception as e:
         print(f"ERROR saat menyimpan artefak model: {e}")
-
 
 if __name__ == "__main__":
     main()

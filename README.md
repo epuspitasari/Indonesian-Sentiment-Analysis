@@ -34,6 +34,7 @@ Proyek ini mengotomatisasi klasifikasi sentimen teks (Positif, Negatif, Netral) 
 Artefak model (`tfidf_vectorizer.pkl` dan `sentiment_model.pkl`) diintegrasikan ke dalam:
 1.  **Backend (FastAPI):** Menggunakan *Strict Guardrails* untuk memproses sentimen secara *real-time*.
 2.  **Frontend (Streamlit):** Dasbor interaktif untuk riset pasar praktis, dilengkapi fitur *Human-in-the-loop* (pelabelan ulang otomatis jika prediksi salah).
+3.  Penyimpanan data koreksi feedback pada Streamlit disimpan ke dalam bentuk berkas data/data_koreksi.csv menggunakan separator ; dengan standarisasi target label huruf kecil (positive / negative) agar saat proses retraining otomatis terbaca sempurna oleh main_nlp.py.
 
 ---
 
