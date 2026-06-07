@@ -10,7 +10,7 @@ app = FastAPI(title="Sentiment Analysis API – Sinkron Version", version="2.0")
 
 try:
     vectorizer, model = load_model_artifacts()
-except Exception:
+except Exception as e:
     import joblib
     try:
         vectorizer = joblib.load(os.path.join("models", "tfidf_vectorizer.pkl"))
